@@ -57,6 +57,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import me.jdweak.customMobs.Main;
+import net.md_5.bungee.api.ChatColor;
 
 public class Listeners implements Listener{
 	
@@ -71,17 +72,16 @@ public class Listeners implements Listener{
 	
 	@EventHandler
 	public void poisinAttack(EntityDamageByEntityEvent event) {
-		if(event.getDamager().getCustomName().equalsIgnoreCase("poison zombie")) {
+		if(event.getDamager().getCustomName() != null && event.getDamager().getCustomName().equalsIgnoreCase("poison zombie")) {
 			LivingEntity entity = (LivingEntity)event.getEntity();
 			int potionDuration = (int) (Math.random() * 20 + 5) * 20;
 			entity.addPotionEffect(new PotionEffect(PotionEffectType.POISON, potionDuration, 0));
-			Bukkit.getServer().broadcastMessage(String.valueOf(potionDuration));
 		}
 	}
 	
 	@EventHandler
 	public void launchAttack(EntityDamageByEntityEvent event) {
-		if(event.getDamager().getCustomName().equalsIgnoreCase("launcher")) {
+		if(event.getDamager().getCustomName() != null && event.getDamager().getCustomName().equalsIgnoreCase("launcher")) {
 			LivingEntity entity = (LivingEntity)event.getEntity();
 //			entity.setVelocity(new Vector(entity.getVelocity().getX(), entity.getVelocity().getY() + 100, entity.getVelocity().getZ()));
 			entity.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 2, (int) (Math.random() * 20 + 50)));
@@ -107,7 +107,7 @@ public class Listeners implements Listener{
 	
 	@EventHandler
 	public void onHit(EntityDamageByEntityEvent event) {
-	   	      if (event.getEntity() instanceof LivingEntity) {
+	   	      if (event.getEntity() instanceof LivingEntity && event.getCause() == DamageCause.PROJECTILE) {
 	         Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getJavaPlugin(), ()->{
 	            ((LivingEntity) event.getEntity()).setNoDamageTicks(0); // after 100ms you will set the no damage ticks to 0 so arrows can hurt again
 	         }, 2L);
@@ -116,8 +116,9 @@ public class Listeners implements Listener{
 
 	
 	@EventHandler
-	public void event(AreaEffectCloudApplyEvent event) {
-		if(event.getEntity().getBasePotionData().getType() == PotionType.SPEED) {
+	public void cloudEvent(AreaEffectCloudApplyEvent event) {
+		Bukkit.broadcastMessage(event.getEntity().getBasePotionData().getType().toString());
+		if(event.getEntity().getBasePotionData().getType() == PotionType.UNCRAFTABLE) {
 			event.setCancelled(true);
 		}
 		
@@ -143,12 +144,17 @@ public class Listeners implements Listener{
 		int random = (int) (Math.random() * 5 + 5);
 		if(projectile.getType() == EntityType.FIREBALL) { // if projectile is fireball create explosion
 			if(projectile.getShooter() instanceof Skeleton || projectile.getShooter() instanceof Player) { //if shooter is skeleton or redirected by player make smaller explosion
-				random = (int) (Math.random() * 2 + 1);
+				random = (int) (Math.random() * 3 + 1);
 			}
 			if(event.getHitBlock() != null) { //create explosion at block if block hit
 				event.getEntity().getWorld().createExplosion(event.getHitBlock().getLocation(), random);
 			} else { //create explosion at entity if entity hit
-				event.getEntity().getWorld().createExplosion(event.getHitEntity().getLocation(), random);
+				Location location = event.getHitEntity().getLocation();
+//				Bukkit.broadcastMessage(ChatColor.RED + "original location: " + location.toString());
+				Vector vector = event.getEntity().getVelocity();
+				vector.multiply(-3);
+				location.add(vector);
+				event.getEntity().getWorld().createExplosion(location, random);
 			}
 		}
 	}
@@ -187,7 +193,7 @@ public class Listeners implements Listener{
 		int random = (int) (Math.random() * 100);
 		ItemStack y = new ItemStack(Material.BOW);
 		ItemMeta itemMeta = y.getItemMeta();
-		if(random > 90) { //machine gun skeleton
+		if(random > 80) { //machine gun skeleton
 			ItemStack helmet = new ItemStack(Material.LEATHER_HELMET);
 			LeatherArmorMeta helmetMeta = (LeatherArmorMeta) helmet.getItemMeta();
 			helmetMeta.setColor(Color.fromRGB(0, 204, 0));
@@ -197,7 +203,7 @@ public class Listeners implements Listener{
 			y.setItemMeta(itemMeta);
 			x.getEquipment().setItemInHand(y);
 			x.getEquipment().setItemInHandDropChance(0);
-		} else if(random < 10){ //rocket launcher skeleton
+		} else if(random > 60){ //rocket launcher skeleton
 			ItemStack helmet = new ItemStack(Material.LEATHER_HELMET);
 			LeatherArmorMeta helmetMeta = (LeatherArmorMeta) helmet.getItemMeta();
 			helmetMeta.setColor(Color.fromRGB(204, 0, 0));
@@ -217,10 +223,11 @@ public class Listeners implements Listener{
 	
 	public void customizeZombie(Zombie x) {
 		int random = (int) (Math.random() * 100);
-		if(random > 70) {
+		if(random > 50) {
 			x.setCustomName("poison zombie");
-		} else if(random < 30) {
+		} else if(random < 50) {
 			x.setCustomName("launcher");
+			x.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 10000000, 2));
 		}
 	}
 
@@ -232,11 +239,12 @@ public class Listeners implements Listener{
 		if(event.getEntityType() == EntityType.CREEPER) {
 			Creeper creeper = (Creeper) event.getEntity();
 			creeper.setExplosionRadius((int) (Math.random() * 7 + 8));
-			creeper.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 1000000, 3));
+			creeper.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 1000000, 1));
 		} else if(event.getEntityType() == EntityType.SKELETON) {
 			customizeSkeleton((Skeleton) event.getEntity());
 		} else if(event.getEntityType() == EntityType.ZOMBIE) {
 			Zombie x = (Zombie) event.getEntity();
+			x.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 1));
 			customizeZombie(x);
 		}  else if(event.getEntityType() == EntityType.BLAZE) {
 			Blaze x = (Blaze) event.getEntity();
@@ -250,7 +258,7 @@ public class Listeners implements Listener{
 				}
 			}
 		} else if(event.getEntityType() == EntityType.SPIDER) {
-			event.getEntity().addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 10000, (int) (Math.random() * 5 + 5)));
+			event.getEntity().addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 10000, (int) (Math.random() * 3 + 4)));
 		} else if(event.getEntityType() == EntityType.WITHER_SKELETON) {
 			WitherSkeleton x = (WitherSkeleton) event.getEntity();
 			
