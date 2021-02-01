@@ -17,9 +17,11 @@ import org.bukkit.entity.Enderman;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fireball;
+import org.bukkit.entity.Husk;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Phantom;
 import org.bukkit.entity.PigZombie;
+import org.bukkit.entity.Piglin;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Skeleton;
@@ -69,6 +71,22 @@ public class Listeners implements Listener{
 	}
 	
 	
+	@EventHandler
+	public void morganaAttack(ProjectileHitEvent event) {
+		if(event.getEntity().getType() == EntityType.SMALL_FIREBALL && event.getHitEntity() instanceof LivingEntity) {
+			LivingEntity entity = (LivingEntity) event.getHitEntity();
+			entity.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 10));
+		}
+	}
+	
+	@EventHandler
+	public void rootPlayer(PlayerMoveEvent event) {
+		if(event.getPlayer().hasPotionEffect(PotionEffectType.SLOW) && event.getPlayer().getPotionEffect(PotionEffectType.SLOW).getAmplifier() > 9) {// if player has slowness > 9
+			if(event.getPlayer().getVelocity().getY() > 0) { //if player jumps
+				event.setCancelled(true);
+		}
+		}
+	}
 	
 	@EventHandler
 	public void poisinAttack(EntityDamageByEntityEvent event) {
@@ -84,7 +102,7 @@ public class Listeners implements Listener{
 		if(event.getDamager().getCustomName() != null && event.getDamager().getCustomName().equalsIgnoreCase("launcher")) {
 			LivingEntity entity = (LivingEntity)event.getEntity();
 //			entity.setVelocity(new Vector(entity.getVelocity().getX(), entity.getVelocity().getY() + 100, entity.getVelocity().getZ()));
-			entity.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 2, (int) (Math.random() * 20 + 50)));
+			entity.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 2, (int) (Math.random() * 40 + 50)));
 			
 		}
 	}
@@ -117,7 +135,6 @@ public class Listeners implements Listener{
 	
 	@EventHandler
 	public void cloudEvent(AreaEffectCloudApplyEvent event) {
-		Bukkit.broadcastMessage(event.getEntity().getBasePotionData().getType().toString());
 		if(event.getEntity().getBasePotionData().getType() == PotionType.UNCRAFTABLE) {
 			event.setCancelled(true);
 		}
@@ -144,7 +161,7 @@ public class Listeners implements Listener{
 		int random = (int) (Math.random() * 5 + 5);
 		if(projectile.getType() == EntityType.FIREBALL) { // if projectile is fireball create explosion
 			if(projectile.getShooter() instanceof Skeleton || projectile.getShooter() instanceof Player) { //if shooter is skeleton or redirected by player make smaller explosion
-				random = (int) (Math.random() * 3 + 1);
+				return;
 			}
 			if(event.getHitBlock() != null) { //create explosion at block if block hit
 				event.getEntity().getWorld().createExplosion(event.getHitBlock().getLocation(), random);
@@ -164,12 +181,13 @@ public class Listeners implements Listener{
 	public void skeletonShoot(EntityShootBowEvent event) {
 		if(event.getBow().getItemMeta().getDisplayName().equalsIgnoreCase("machine gun")) { //bow named machine gun
 
-				BukkitRunnable fireArrows = new ArrowFireTask(mainClass, 5, event.getEntity());
-				fireArrows.runTaskTimer(mainClass, 8, 8);
-			}
-		
-		if(event.getBow().getItemMeta().getDisplayName().equalsIgnoreCase("rocket launcher")) {
+				BukkitRunnable fireArrows = new ArrowFireTask(mainClass, 4, event.getEntity());
+				fireArrows.runTaskTimer(mainClass, 5, 5);
+		} else if(event.getBow().getItemMeta().getDisplayName().equalsIgnoreCase("rocket launcher")) {
 			event.getEntity().launchProjectile(Fireball.class);
+			event.setCancelled(true);
+		} else if(event.getBow().getItemMeta().getDisplayName().equalsIgnoreCase("liandry's torment")) {
+			event.getEntity().launchProjectile(SmallFireball.class);
 			event.setCancelled(true);
 		}
 		}
@@ -213,6 +231,17 @@ public class Listeners implements Listener{
 			y.setItemMeta(itemMeta);
 			x.getEquipment().setItemInHand(y);
 			x.getEquipment().setItemInHandDropChance(0);
+		} else if(random > 40) {
+			ItemStack helmet = new ItemStack(Material.LEATHER_HELMET);
+			LeatherArmorMeta helmetMeta = (LeatherArmorMeta) helmet.getItemMeta();
+			helmetMeta.setColor(Color.fromRGB(102, 0, 153));
+			helmet.setItemMeta(helmetMeta);
+			x.getEquipment().setHelmet(helmet);
+			itemMeta.setDisplayName("liandry's torment");
+			y.setItemMeta(itemMeta);
+			x.getEquipment().setItemInHand(y);
+			x.getEquipment().setItemInHandDropChance(0);
+			x.setCustomName("Morgana");
 		} else { //normal skeleton
 			y.addEnchantment(Enchantment.ARROW_DAMAGE, 1);
 			y.addUnsafeEnchantment(Enchantment.ARROW_KNOCKBACK, 1);
@@ -225,6 +254,17 @@ public class Listeners implements Listener{
 		int random = (int) (Math.random() * 100);
 		if(random > 50) {
 			x.setCustomName("poison zombie");
+		} else if(random < 50) {
+			x.setCustomName("launcher");
+			x.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 10000000, 2));
+		}
+	}
+	
+	public void customizeHusk(Husk x) {
+		int random = (int) (Math.random() * 100);
+		if(random > 50) {
+			x.setCustomName("poison zombie");
+			x.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 10000000, 1));
 		} else if(random < 50) {
 			x.setCustomName("launcher");
 			x.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 10000000, 2));
@@ -243,10 +283,14 @@ public class Listeners implements Listener{
 		} else if(event.getEntityType() == EntityType.SKELETON) {
 			customizeSkeleton((Skeleton) event.getEntity());
 		} else if(event.getEntityType() == EntityType.ZOMBIE) {
+			ItemStack helmet = new ItemStack(Material.LEATHER_HELMET);
 			Zombie x = (Zombie) event.getEntity();
-			x.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 999999, 1));
+			x.getEquipment().setHelmet(helmet);
 			customizeZombie(x);
-		}  else if(event.getEntityType() == EntityType.BLAZE) {
+		} else if(event.getEntityType() == EntityType.HUSK) {
+			Husk x = (Husk) event.getEntity();
+			customizeHusk(x);
+		}else if(event.getEntityType() == EntityType.BLAZE) {
 			Blaze x = (Blaze) event.getEntity();
 			if(event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
 				Blaze y = (Blaze) event.getEntity().getWorld().spawnEntity(x.getLocation(), EntityType.BLAZE);
@@ -263,13 +307,20 @@ public class Listeners implements Listener{
 			WitherSkeleton x = (WitherSkeleton) event.getEntity();
 			
 		} else if(event.getEntityType() == EntityType.PIGLIN) {
-			PigZombie x = (PigZombie) event.getEntity();
+			Piglin x = (Piglin) event.getEntity();
 			x.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 900000, 2));
-			Zombie y = (Zombie) x.getWorld().spawnEntity(x.getLocation(), EntityType.ZOMBIE);
-			y.setBaby(true);
-			y.addPassenger(x);
+		} else if(event.getEntityType() == EntityType.HOGLIN) {
+			event.getEntity().setCustomName("launcher");
 		} else if(event.getEntityType() == EntityType.ENDERMAN) {
 			Enderman x = (Enderman) event.getEntity();
+		} else if(event.getEntityType() == EntityType.PHANTOM) {
+			if(event.getSpawnReason() != SpawnReason.CUSTOM) {
+				Bukkit.getServer().broadcastMessage(ChatColor.GRAY + "A swarm is descending...");
+				for(int i = 0; i < Math.random() * 5 + 3; i ++) {
+					Location loc = event.getEntity().getLocation();
+					event.getEntity().getWorld().spawnEntity(loc, EntityType.PHANTOM);
+				}
+			}
 		} else if(event.getEntityType() == EntityType.BEE) {
 			Bee bee = (Bee)event.getEntity();
 			bee.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 999999999, 12));
