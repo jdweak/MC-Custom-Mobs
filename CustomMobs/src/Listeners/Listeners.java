@@ -1,51 +1,46 @@
 package Listeners;
 
+import java.util.ArrayList;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.AbstractArrow;
-import org.bukkit.entity.Arrow;
-import org.bukkit.entity.Bat;
 import org.bukkit.entity.Bee;
 import org.bukkit.entity.Blaze;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.DragonFireball;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Enderman;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Husk;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Phantom;
-import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Piglin;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Skeleton;
 import org.bukkit.entity.SmallFireball;
-import org.bukkit.entity.SpectralArrow;
-import org.bukkit.entity.Vex;
 import org.bukkit.entity.WitherSkeleton;
 import org.bukkit.entity.Zombie;
+import org.bukkit.entity.ZombieVillager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
+import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
-import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
-import org.bukkit.event.entity.EntityCombustEvent;
-import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -54,7 +49,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
-import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
@@ -64,6 +58,9 @@ import net.md_5.bungee.api.ChatColor;
 public class Listeners implements Listener{
 	
 	JavaPlugin mainClass;
+	
+
+	
 	
 	public Listeners(JavaPlugin plugin) {
 		super();
@@ -131,7 +128,43 @@ public class Listeners implements Listener{
 	         }, 2L);
 	      }
 	}
+	
+	
+	@EventHandler
+	public void dragonDamaged(EntityDamageEvent event) {
+		if(event.getEntityType() == EntityType.ENDER_DRAGON) {
+			event.setDamage(event.getDamage()/3);
+			if(event.getCause() == DamageCause.BLOCK_EXPLOSION) {
+				event.setCancelled(true);
+			}
+		}
+	}
+	
+	@EventHandler
+	public void dragonFireEvent(ProjectileLaunchEvent event) {
+		if(event.getEntity() instanceof DragonFireball) {
+			EnderDragon dragon = event.getEntity().getWorld().getEnderDragonBattle().getEnderDragon();
+			BukkitRunnable fireBalls = new DragonFireBallFireTask(mainClass, 10, dragon);
+			fireBalls.runTask(mainClass);
+		}
+	}
 
+	@EventHandler
+	public void dragonDeathEvent(EntityDeathEvent event) {
+		if(event.getEntityType() == EntityType.ENDER_DRAGON) {
+			DragonDeathEventTask dTask = new DragonDeathEventTask(mainClass, (EnderDragon) event.getEntity());
+			dTask.runTaskTimer(mainClass, 0, 70);
+		}
+	}
+
+	@EventHandler
+	public void silverFishHit(EntityDamageByEntityEvent event) {
+		if(event.getEntityType() == EntityType.SILVERFISH && !event.getEntity().isDead()) {
+			for(int i = 0; i < Math.random() * 2 + 1; i ++) {
+				event.getEntity().getWorld().spawnEntity(event.getEntity().getLocation(), EntityType.SILVERFISH);
+			}
+		}
+	}
 	
 	@EventHandler
 	public void cloudEvent(AreaEffectCloudApplyEvent event) {
@@ -139,6 +172,21 @@ public class Listeners implements Listener{
 			event.setCancelled(true);
 		}
 		
+	}
+	
+	@EventHandler
+	public void endCrystalBreakEvent(EntityDamageEvent event) {
+		if(event.getEntityType() == EntityType.ENDER_CRYSTAL) {
+			for(int i = 0; i < 12; i ++) {
+				Location loc = event.getEntity().getLocation();
+				loc.setY(loc.getY() + 10);
+				Phantom x = (Phantom) event.getEntity().getWorld().spawnEntity(loc, EntityType.PHANTOM);
+				x.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 900000, 8));
+				x.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 900000, 3));
+				x.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 900000, 1));
+				
+			}
+		}
 	}
 	
 	@EventHandler
@@ -158,7 +206,7 @@ public class Listeners implements Listener{
 	@EventHandler
 	public void projectileHitEvent(ProjectileHitEvent event) {
 		Projectile projectile = event.getEntity();
-		int random = (int) (Math.random() * 5 + 5);
+		int random = (int) (Math.random() * 1 + 4);
 		if(projectile.getType() == EntityType.FIREBALL) { // if projectile is fireball create explosion
 			if(projectile.getShooter() instanceof Skeleton || projectile.getShooter() instanceof Player) { //if shooter is skeleton or redirected by player make smaller explosion
 				return;
@@ -169,13 +217,22 @@ public class Listeners implements Listener{
 				Location location = event.getHitEntity().getLocation();
 //				Bukkit.broadcastMessage(ChatColor.RED + "original location: " + location.toString());
 				Vector vector = event.getEntity().getVelocity();
-				vector.multiply(-3);
+				vector.multiply(-7);
 				location.add(vector);
 				event.getEntity().getWorld().createExplosion(location, random);
 			}
 		}
 	}
 	
+	@EventHandler 
+	public void shulkerAttack(EntityPotionEffectEvent event){
+		if(event.getCause() != EntityPotionEffectEvent.Cause.PLUGIN) {
+			if(event.getModifiedType().toString().equalsIgnoreCase("PotionEffectType[25, LEVITATION]")) {
+				LivingEntity entity = (LivingEntity) event.getEntity();
+				entity.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 1200, 1));
+			}
+		}
+	}
 	
 	@EventHandler
 	public void skeletonShoot(EntityShootBowEvent event) {
@@ -283,6 +340,10 @@ public class Listeners implements Listener{
 		} else if(event.getEntityType() == EntityType.SKELETON) {
 			customizeSkeleton((Skeleton) event.getEntity());
 		} else if(event.getEntityType() == EntityType.ZOMBIE) {
+			int random = (int) (Math.random() * 100);
+			if(random > 92) {
+				event.getEntity().getWorld().spawn(event.getLocation(), ZombieVillager.class);
+			}
 			ItemStack helmet = new ItemStack(Material.LEATHER_HELMET);
 			Zombie x = (Zombie) event.getEntity();
 			x.getEquipment().setHelmet(helmet);
@@ -324,6 +385,9 @@ public class Listeners implements Listener{
 		} else if(event.getEntityType() == EntityType.BEE) {
 			Bee bee = (Bee)event.getEntity();
 			bee.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 999999999, 12));
+		} else if(event.getEntityType() == EntityType.PHANTOM) {
+			Phantom phantom = (Phantom) event.getEntity();
+			phantom.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 99999999, 50));
 		}
 		
 	

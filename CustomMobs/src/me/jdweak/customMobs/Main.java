@@ -2,6 +2,7 @@ package me.jdweak.customMobs;
 
 import org.bukkit.plugin.java.JavaPlugin;
 import Listeners.Listeners;
+import net.md_5.bungee.api.ChatColor;
 
 public class Main extends JavaPlugin{
 	
@@ -16,7 +17,7 @@ public class Main extends JavaPlugin{
 		instance = this;
 		
 		getServer().getPluginManager().registerEvents(new Listeners(this), this);
-		System.out.println("plugin enabled with updates");
+		getServer().getConsoleSender().sendMessage(ChatColor.GREEN + "\n\nCusom Mobs enabled with updates\n\n");
 	}
 	
 	public static JavaPlugin getJavaPlugin() {
